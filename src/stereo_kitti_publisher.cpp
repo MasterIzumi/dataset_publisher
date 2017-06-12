@@ -7,6 +7,7 @@
 #include <iostream>
 #include <sstream>
 #include <fstream>
+#include <thread>
 
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
@@ -20,83 +21,92 @@ using namespace cv;
 void LoadImages(const string &strPathToSequence, vector<string> &vstrImageLeft,
                 vector<string> &vstrImageRight, vector<double> &vTimestamps);
 
+void imgPub(const image_transport::Publisher pub, const sensor_msgs::Image img)
+{
+	pub.publish(img);
+}
 
 int main(int argc, char** argv)
 {
-
 	if(argc<2)
 	{
-		cout << "Input argument error" << endl;
+		cout << "Input argument error:" << endl;
+		cout << "rosrun dataset_publisher stereo_kitti_publisher seq_addr" << endl;
 	}
 
-    // Retrieve paths to images
-    vector<string> vstrImageLeft;
-    vector<string> vstrImageRight;
-    vector<double> vTimestamps;
-    LoadImages(string(argv[1]), vstrImageLeft, vstrImageRight, vTimestamps);
-    const int nImages = vstrImageLeft.size();
-
+	// Retrieve paths to images
+	vector<string> vstrImageLeft;
+	vector<string> vstrImageRight;
+	vector<double> vTimestamps;
+	LoadImages(string(argv[1]), vstrImageLeft, vstrImageRight, vTimestamps);
+	const int nImages = vstrImageLeft.size();
 
 	ros::init(argc, argv, "img_pub_node");
 	ros::NodeHandle nh_;
 	image_transport::ImageTransport it_(nh_);
+	
 	image_transport::Publisher image_pub_left;
-    image_transport::Publisher image_pub_right;
+	image_transport::Publisher image_pub_right;
+
 	image_pub_left = it_.advertise("/camera/left/image_raw", 1);
 	image_pub_right = it_.advertise("/camera/right/image_raw", 1);
     
 	ros::Rate loop_rate(10);  
 
 	cv_bridge::CvImage cvi_l;
-    cv_bridge::CvImage cvi_r;
+    	cv_bridge::CvImage cvi_r;
 	cvi_l.header.frame_id = "image";
-    cvi_r.header.frame_id = "image";
+    	cvi_r.header.frame_id = "image";
 	cvi_l.encoding = "bgr8";
-    cvi_r.encoding = "bgr8";
+    	cvi_r.encoding = "bgr8";
 
 	int cnt = 0;
 	while(ros::ok())
 	{
 		Mat imgLeft = cv::imread(vstrImageLeft[cnt],CV_LOAD_IMAGE_UNCHANGED);
 		Mat imgRight = cv::imread(vstrImageRight[cnt],CV_LOAD_IMAGE_UNCHANGED);
-        
-        if(imgLeft.empty())
-        {
-            cerr << endl << "Failed to load image at: "
-                 << string(vstrImageLeft[cnt]) << endl;
-            return 1;
-        }
+  
+  	       	if(imgLeft.empty())
+	        	{
+	            		cerr << endl << "Failed to load image at: "
+	             		    << string(vstrImageLeft[cnt]) << endl;
+	            		return 1;
+	       	}
 
-        cout<< cnt << endl;
+        		cout<< cnt << endl;
 		//imshow("img",img);
 
 		ros::Time time=ros::Time::now();
 		
 		cvi_l.header.stamp = time;
-        cvi_r.header.stamp = time;
+        		cvi_r.header.stamp = time;
 
 		cvi_l.image = imgLeft;
-        cvi_r.image = imgRight;
+        		cvi_r.image = imgRight;
 
 		sensor_msgs::Image im_l;
-        sensor_msgs::Image im_r;
+		sensor_msgs::Image im_r;
 		cvi_l.toImageMsg(im_l);
-        cvi_r.toImageMsg(im_r);
+        		cvi_r.toImageMsg(im_r);
         
-		image_pub_left.publish(im_l);
-	    image_pub_right.publish(im_r);
-    
+        		std::thread leftPub(imgPub,image_pub_left,im_l);
+        		std::thread rightPub(imgPub,image_pub_right,im_r);
+        		leftPub.join();
+        		rightPub.join();
 
+		//image_pub_left.publish(im_l);
+	    	//image_pub_right.publish(im_r);
+    
 		// char c = waitKey(10);
 		// if(c=='q')
 		// 	break;
-    	cnt++;
-    	if(cnt>=nImages)
-    		cnt=0;
+    		cnt++;
+    		if(cnt>=nImages)
+    			cnt=0;
     		//break;
 
 		ros::spinOnce();  
-    	loop_rate.sleep();  
+    		loop_rate.sleep();  
 	}
 
 

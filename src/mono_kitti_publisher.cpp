@@ -51,8 +51,14 @@ int main(int argc, char** argv)
 	int cnt = 0;
 	while(ros::ok())
 	{
-		Mat img = imread(vstrImageFilenames[cnt],CV_LOAD_IMAGE_UNCHANGED);
+		Mat img = imread(vstrImageFilenames[cnt]);
 		cout<< cnt << endl;
+
+		if(img.empty())
+		{
+		    cout << "image read error!" << endl;
+		    return 0;
+		}
 		//imshow("img",img);
 
 		ros::Time time=ros::Time::now();
@@ -65,9 +71,9 @@ int main(int argc, char** argv)
 		image_pub_.publish(im);
 	
 
-		// char c = waitKey(10);
-		// if(c=='q')
-		// 	break;
+		//char c = waitKey(10);
+		//if(c=='q')
+		//	break;
     	cnt++;
     	if(cnt>=nImages)
     		cnt=0;
