@@ -18,12 +18,23 @@
 using namespace std;
 using namespace cv;
 
+Mat imgLeft;
+Mat imgRight;	
+
 void LoadImages(const string &strPathToSequence, vector<string> &vstrImageLeft,
                 vector<string> &vstrImageRight, vector<double> &vTimestamps);
 
 void imgPub(const image_transport::Publisher pub, const sensor_msgs::Image img)
 {
 	pub.publish(img);
+}
+
+void imageGrab(const string dir, const int side)
+{
+	if(side == 0)
+		imgLeft = cv::imread(dir);
+	if(side == 1)
+		imgRight = cv::imread(dir);
 }
 
 int main(int argc, char** argv)
@@ -51,7 +62,7 @@ int main(int argc, char** argv)
 	image_pub_left = it_.advertise("/camera/left/image_raw", 1);
 	image_pub_right = it_.advertise("/camera/right/image_raw", 1);
     
-	ros::Rate loop_rate(10);  
+	ros::Rate loop_rate(15);  
 
 	cv_bridge::CvImage cvi_l;
     	cv_bridge::CvImage cvi_r;
@@ -63,9 +74,15 @@ int main(int argc, char** argv)
 	int cnt = 0;
 	while(ros::ok())
 	{
-		Mat imgLeft = cv::imread(vstrImageLeft[cnt],CV_LOAD_IMAGE_UNCHANGED);
-		Mat imgRight = cv::imread(vstrImageRight[cnt],CV_LOAD_IMAGE_UNCHANGED);
-  
+        		std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
+
+		//Mat imgLeft = cv::imread(vstrImageLeft[cnt]);
+		//Mat imgRight = cv::imread(vstrImageRight[cnt]);	
+		thread leftGrab(imageGrab,vstrImageLeft[cnt],0);
+		thread rightGrab(imageGrab,vstrImageRight[cnt],1);
+		leftGrab.join();
+		rightGrab.join();
+
   	       	if(imgLeft.empty())
 	        	{
 	            		cerr << endl << "Failed to load image at: "
@@ -73,8 +90,19 @@ int main(int argc, char** argv)
 	            		return 1;
 	       	}
 
-        		cout<< cnt << endl;
-		//imshow("img",img);
+        		std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
+
+		double timread= std::chrono::duration_cast<std::chrono::duration<double> >(t2 - t1).count();
+		if(cnt % 5 == 0)
+		{	
+			cout << cnt << "  Image reading time = " << timread << "s, freqency = " << 1/timread << "Hz" << endl;
+			//cout<< cnt << endl;
+	       	}
+        		//cout<< cnt << endl;
+//		Mat img;
+//		cv::resize(imgLeft,img,Size(imgLeft.cols/2,imgLeft.rows/2));
+//		imshow("img",img);
+//		waitKey(10);
 
 		ros::Time time=ros::Time::now();
 		
