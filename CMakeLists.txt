@@ -47,4 +47,11 @@ target_link_libraries(stereo_kitti_publisher
   pthread
 )
 
+add_executable(stereo_EuRoc_publisher src/stereo_EuRoc_publisher.cpp)
+target_link_libraries(stereo_EuRoc_publisher
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBS}
+  pthread
+)
+
 

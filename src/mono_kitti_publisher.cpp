@@ -28,6 +28,7 @@ int main(int argc, char** argv)
 	if(argc<2)
 	{
 		cout << "Input argument error" << endl;
+                return -1;
 	}
 
     // Retrieve paths to images
@@ -51,14 +52,25 @@ int main(int argc, char** argv)
 	int cnt = 0;
 	while(ros::ok())
 	{
+		std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
+
 		Mat img = imread(vstrImageFilenames[cnt]);
-		cout<< cnt << endl;
 
 		if(img.empty())
 		{
 		    cout << "image read error!" << endl;
 		    return 0;
 		}
+
+        		std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
+
+		double timread= std::chrono::duration_cast<std::chrono::duration<double> >(t2 - t1).count();
+		if(cnt % 5 == 0)
+		{	
+			cout << cnt << "  Image reading time = " << timread << "s, freqency = " << 1/timread << "Hz" << endl;
+			//cout<< cnt << endl;
+	       	}
+
 		//imshow("img",img);
 
 		ros::Time time=ros::Time::now();
